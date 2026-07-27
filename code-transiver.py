@@ -67,6 +67,10 @@ while True:
     print("Alt: {:6.1f}".format(bmp.altitude))
     gps.update()
     current = time.monotonic()
+    accel_x, accel_y, accel_z = sensor.acceleration
+    print(f"Acceleration: X:{accel_x:.2f}, Y: {accel_y:.2f}, Z: {accel_z:.2f} m/s^2")
+    gyro_x, gyro_y, gyro_z = sensor.gyro
+    print(f"Gyro X:{gyro_x:.2f}, Y: {gyro_y:.2f}, Z: {gyro_z:.2f} radians/s")
     if current - last_print >= 1.0:
         last_print = current
         if not gps.has_fix:
@@ -77,9 +81,7 @@ while True:
         print('Longitude: {0:.6f} degrees'.format(gps.longitude))
         sats = gps.satellites if gps.satellites is not None else 0
         print('Satellites: {0}'.format(sats))
-    accel_x, accel_y, accel_z = sensor.acceleration
-    print(f"Acceleration: X:{accel_x:.2f}, Y: {accel_y:.2f}, Z: {accel_z:.2f} m/s^2")
-    gyro_x, gyro_y, gyro_z = sensor.gyro
-    print(f"Gyro X:{gyro_x:.2f}, Y: {gyro_y:.2f}, Z: {gyro_z:.2f} radians/s")
+        gps_altitude = gps.altitude_m if gps.altitude_m is not None else 0.0
+        print('Altitude: {0:.2f} meters'.format(gps_altitude))
     print("")
-    time.sleep(1)
+    time.sleep(1) 
