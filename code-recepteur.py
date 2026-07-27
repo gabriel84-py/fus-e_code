@@ -2,7 +2,6 @@ import board
 import busio
 import digitalio
 import adafruit_rfm9x
-import adafruit_ssd1306
 
 spi = busio.SPI(board.GP18, MOSI=board.GP19, MISO=board.GP16)
 cs = digitalio.DigitalInOut(board.GP8)
