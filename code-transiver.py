@@ -6,7 +6,6 @@ import adafruit_bmp3xx
 import time
 import adafruit_gps
 from adafruit_lsm6ds.lsm6dso32 import LSM6DSO32
-import sdcardio
 import storage
 import adafruit_sdcard
 
