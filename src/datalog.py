@@ -6,6 +6,7 @@ import storage
 import adafruit_sdcard
 from sensors import Sensors
 from battery import Battery
+from telemetry import Telemetry
 
 #timestamp_ms, phase, ax, ay, az, gx, gy, gz, pression_pa, temp_c, alt_baro_m, lat, lon, alt_gps_m, z_kalman_m, vz_kalman_ms, batt_v
 
@@ -22,6 +23,8 @@ class Datalog:
         self.sensors = Sensors()
         #initialiser battery
         self.batt = Battery()
+        #initialiser telemetry
+        self.telem = Telemetry()
         self.filename = time.time()
         self.write_to_sdcard("timestamp_ms, phase, ax, ay, az, gx, gy, gz, pression_pa, temp_c, alt_baro_m, lat, lon, alt_gps_m, z_kalman_m, vz_kalman_ms, batt_v", f"data_{self.filename}.csv")
 
@@ -46,6 +49,6 @@ class Datalog:
     def log(self):
         self.write_to_sdcard(f"{self.timestamp_ms}, {self.phase}, {self.ax}, {self.ay}, {self.az}, {self.gx}, {self.gy}, {self.gz}, {self.pression_pa}, {self.temp_c}, {self.alt_baro_m}, {self.lat}, {self.lon}, {self.alt_gps_m}, {self.z_kalman_m,} {self.vz_kalman_ms}, {self.batt_v}", f"data_{self.filename}.csv")
 
-
     def send(self):
-        pass
+        self.telem.send(f"{self.timestamp_ms}, {self.phase}, {self.ax}, {self.ay}, {self.az}, {self.gx}, {self.gy}, {self.gz}, {self.pression_pa}, {self.temp_c}, {self.alt_baro_m}, {self.lat}, {self.lon}, {self.alt_gps_m}, {self.z_kalman_m,} {self.vz_kalman_ms}, {self.batt_v}")
+    
