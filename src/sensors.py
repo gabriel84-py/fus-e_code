@@ -1,7 +1,6 @@
 import board
 import busio
 import digitalio
-import adafruit_rfm9x
 import adafruit_bmp3xx
 import time
 import adafruit_gps
