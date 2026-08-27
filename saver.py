@@ -6,6 +6,6 @@ if rxtx == 'tx':
     SOURCE = "/Users/gabrieljeanvermeille/PycharmProjects/couillonne-de-la-lune/src/code-transiver.py"
 if rxtx == 'bench':
     SOURCE = "/Users/gabrieljeanvermeille/PycharmProjects/couillonne-de-la-lune/tests/benchbaro.py"
-DEST = "/Volumes/CIRCUITPY/code.py" # adapte le chemin selon ton OS
+DEST = "/Volumes/CIRCUITPY/code.py" 
 shutil.copy(SOURCE, DEST)
 print("Copié vers la carte.")
