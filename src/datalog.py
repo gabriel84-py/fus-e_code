@@ -28,14 +28,14 @@ class Datalog:
         self.filename = time.time()
         self.write_to_sdcard("timestamp_ms, phase, ax, ay, az, gx, gy, gz, pression_pa, temp_c, alt_baro_m, lat, lon, alt_gps_m, z_kalman_m, vz_kalman_ms, batt_v", f"data_{self.filename}.csv")
 
-    def write_to_sdcard(something, filename, self):
+    def write_to_sdcard(self, something, filename):
         with open(filename, "w") as f:
             f.write(something + "\r\n")
 
     def gather_information(self):
         self.timestamp_ms = time.time()
         self.phase = None
-        self.ax, self.ay, self.az = self.sensors.imu_accel[0], self.sensors.imu_accel[1], self.sensors.imu_accel[2] # apreil, n'appeler qu'une fois...
+        self.ax, self.ay, self.az = self.sensors.imu_accel[0], self.sensors.imu_accel[1], self.sensors.imu_accel[2] # pareil, n'appeler qu'une fois...
         self. gx, self.gy, self.gz = self.sensors.imu_gyro[0], self.sensors.imu_gyro[1], self.sensors.imu_gyro[2] # la mm
         self.pression_pa = self.sensors.baro_pa
         self.temp_c = self.sensors.baro_temp
