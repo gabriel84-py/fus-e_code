@@ -46,8 +46,9 @@ class Sensors:
 
     @property
     def imu_accel(self):
+        # attention, le capteur est orienté de telle manière que l'axe z de la fusée est aligné en sens et direction avec l'axe x de l'IMU
         self.accel_x, self.accel_y, self.accel_z = self.imu.acceleration
-        return self.accel_x, self.accel_y, self.accel_z
+        return self.accel_z, self.accel_y, self.accel_x #x et z sont donc volontairement intervertis !
 
     @property
     def imu_gyro(self):
