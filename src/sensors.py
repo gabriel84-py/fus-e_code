@@ -12,6 +12,7 @@ class Sensors:
         self.i2c = busio.I2C(board.GP15, board.GP14)
         # Setup SPI
         self.spi = busio.SPI(board.GP18, MOSI=board.GP19, MISO=board.GP16)
+        #vérifie : appelle t on les fonctions setup ? non... ptet il faudrais...""
 
     def baro_setup(self):
         self.bmp = adafruit_bmp3xx.BMP3XX_I2C(self.i2c)

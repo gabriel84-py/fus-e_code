@@ -10,7 +10,7 @@ class Kalman:
         self.b = None
         self.v = 0
         self.h = 0
-        self.r = 17**2
+        self.r = 17**2 #erreur d'unité, je te laisse chercher !
         self.p = 0
         self.q = None
 
