@@ -2,6 +2,7 @@ from sensors import Sensors
 import time
 
 #calculer dt dans main a chaque fois qu'on appelle kalman
+#dt en secondes !!!
 
 class Kalman:
     def __init__(self):
@@ -13,6 +14,9 @@ class Kalman:
         self.r = 17**2 #erreur d'unité, je te laisse chercher !
         self.p = 0
         self.q = None
+
+    def calibrate(self):
+        pass
 
     def prediction(self, dt):
         self.a_corr = self.sensors.imu_accel[2] - self.b
