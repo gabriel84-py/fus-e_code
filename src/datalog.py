@@ -19,10 +19,6 @@ class Datalog:
         self.sdcard = adafruit_sdcard.SDCard(spi, cs_sd)
         vfs = storage.VfsFat(self.sdcard)
         storage.mount(vfs, "/sd")
-        #initialiser sensors
-        self.sensors = Sensors()
-        #initialiser battery
-        self.batt = Battery()
         #initialiser telemetry
         self.telem = Telemetry()
         self.filename = time.time()
@@ -34,24 +30,40 @@ class Datalog:
 
 
     # changer tout metrre en param
-    def gather_information(self):
-        self.timestamp_ms = time.time()
-        self.phase = None
-        self.ax, self.ay, self.az = self.sensors.imu_accel[0], self.sensors.imu_accel[1], self.sensors.imu_accel[2] # pareil, n'appeler qu'une fois...
-        self. gx, self.gy, self.gz = self.sensors.imu_gyro[0], self.sensors.imu_gyro[1], self.sensors.imu_gyro[2] # la mm
-        self.pression_pa = self.sensors.baro_pa
-        self.temp_c = self.sensors.baro_temp
-        self.alt_baro_m = self.sensors.baro_alt
-        self.lat, self.lon = self.sensors.gps_latlong[0], self.sensors.gps_latlong[1] #probleme, imagine que il n'y ai pas de fix et laatlong renvoie donc None... et si on fait un update a chaques appels de latlong...
-        self.alt_gps_m = self.sensors.gps_alt
-        self.z_kalman_m = None
-        self.vz_kalman_ms = None
-        self.batt_v = self.batt.tension
+    def gather_information(self, timestamp, phase, accel, gyro, pression_pa, temp_c, alt_baro_m, lat, lon, alt_gps_m, z_kalman_m, vz_kalman_ms, batt_v):
+        self.timestamp_ms = timestamp
+        self.phase = phase
+        self.ax, self.ay, self.az = accel  # accel lu une seule fois par main, plus de pb
+        self.gx, self.gy, self.gz = gyro   # pareil pour gyro
+        self.pression_pa = pression_pa
+        self.temp_c = temp_c
+        self.alt_baro_m = alt_baro_m
+        self.lat = lat  # plus d'indexation ici, plus de risque de crash si pas de fix
+        self.lon = lon
+        self.alt_gps_m = alt_gps_m
+        self.z_kalman_m = z_kalman_m
+        self.vz_kalman_ms = vz_kalman_ms
+        self.batt_v = batt_v
 
-    def log(self):
-        self.gather_information()
+    def log(self, timestamp, phase, accel, gyro, pression_pa, temp_c, alt_baro_m, lat, lon, alt_gps_m, z_kalman_m, vz_kalman_ms, batt_v):
+        self.gather_information(timestamp, phase, accel, gyro, pression_pa, temp_c, alt_baro_m, lat, lon, alt_gps_m, z_kalman_m, vz_kalman_ms, batt_v):
         self.write_to_sdcard(f"{self.timestamp_ms}, {self.phase}, {self.ax}, {self.ay}, {self.az}, {self.gx}, {self.gy}, {self.gz}, {self.pression_pa}, {self.temp_c}, {self.alt_baro_m}, {self.lat}, {self.lon}, {self.alt_gps_m}, {self.z_kalman_m}, {self.vz_kalman_ms}, {self.batt_v}", f"data_{self.filename}.csv")
 
-    def send(self):
+    def send(self, timestamp, phase, accel, gyro, pression_pa, temp_c, alt_baro_m, lat, lon, alt_gps_m, z_kalman_m, vz_kalman_ms, batt_v):
+        self.gather_information(timestamp, phase, accel, gyro, pression_pa, temp_c, alt_baro_m, lat, lon, alt_gps_m, z_kalman_m, vz_kalman_ms, batt_v)
         self.telem.send(f"{self.timestamp_ms}, {self.phase}, {self.ax}, {self.ay}, {self.az}, {self.gx}, {self.gy}, {self.gz}, {self.pression_pa}, {self.temp_c}, {self.alt_baro_m}, {self.lat}, {self.lon}, {self.alt_gps_m}, {self.z_kalman_m}, {self.vz_kalman_ms}, {self.batt_v}")
-    
+
+
+"""
+accel = sensors.imu_accel      # lecture unique
+gyro = sensors.imu_gyro        # lecture unique
+gps = sensors.gps_latlong      # a gerer avant l'appel : None si pas de fix
+lat, lon = gps if gps is not None else (None, None)
+
+datalog.gather_information(
+    time.monotonic(), sm.state, accel, gyro,
+    sensors.baro_pa, sensors.baro_temp, sensors.baro_alt,
+    lat, lon, sensors.gps_alt,
+    kf.h, kf.v, batt.tension
+)
+"""
