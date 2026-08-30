@@ -1,8 +1,10 @@
 import time
+import apogee
 
 class StateMachine:
     #mettre le gps a ON dès que la phase decente est activée
     def __init__(self):
+        self.apogeedetec = apogee.ApogeeDetection()
         self.state_list = ["PRE_LAUNCH", "BOOST", "COAST", "APOGEE", "DESCENT", "LANDED"]
         self.state = self.state_list[0]
         self.accelLimitForBoost = 19.6 #en m/s^2
@@ -10,7 +12,7 @@ class StateMachine:
         self.t_decollage = 0.0 # !!!! en SECONDES !!!!
         self.ncons = 0
 
-    def update(self, t, accel, kalman_speed, apogee_atteinte): #!!!!!! kalman_speeden m/s; t en SECONDES avec time.monotonic() !!!!!!!
+    def update(self, t, accel, kalman_speed, kh_m): #!!!!!! kalman_speeden m/s; t en SECONDES avec time.monotonic() !!!!!!!
 
         #limit for boost
         if self.state == self.state_list[0]:
@@ -27,7 +29,7 @@ class StateMachine:
 
         #limit for Apogee
         elif self.state == self.state_list[2]:
-            if apogee_atteinte:
+            if self.apogeedetec.detection(kh_m):
                 self.state = self.state_list[3]
             elif (t - self.t_decollage) >= 8.7:
                 self.state = "APOGEEtimer"
