@@ -32,6 +32,8 @@ class Datalog:
         with open(filename, "w") as f:
             f.write(something + "\r\n")
 
+
+    # changer tout metrre en param
     def gather_information(self):
         self.timestamp_ms = time.time()
         self.phase = None
