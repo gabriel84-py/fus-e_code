@@ -6,10 +6,12 @@ import time
 
 class Kalman:
     def __init__(self, dt):
+        self.sensors = Sensors()  # avait disparu, sans ca ca plante direct
+
         self.b = None
         self.v = 0
         self.h = 0
-        self.r = 0.17**2 #cest bon mtn
+        self.r = 0.17**2
         self.p_hh = 0.0
         self.p_hv = 0.0
         self.p_hb = 0.0
@@ -19,9 +21,8 @@ class Kalman:
 
         sigma_a = 2.158e-3
         self.q_v = sigma_a**2 * dt
-        #self.q_h = sigma_a**2 * dt**3 / 3
-        self.q_h = sigma_a**2 * dt**2 / 2 #en intégrant qv c'est ce qu'on a trouvé, t'as une explication pour ta formule ?
-        self.q_b = 1 * 10**(-9)
+        self.q_h = sigma_a**2 * dt**3 / 3  # dt^3/3 pas dt^2/2, ca c'etait q_hv pas q_h
+        self.q_b = 1e-2
 
     def calibrate(self, n_samples=300):
         samples = []
@@ -31,8 +32,7 @@ class Kalman:
         mean = sum(samples) / n_samples
         variance = sum((a - mean) ** 2 for a in samples) / (n_samples - 1)
 
-        #self.b = mean #mais ça veut dire que le biais c'est la moyenne des accelerations ?
-        self.b = sum((a - mean) for a in samples) / n_samples #ça nous paraissait plus logique d'avoir une sorte d'ecart relatif
+        self.b = mean  # pas la moyenne des ecarts, ca vaut tjrs 0 par def de la moyenne
         self.p_bb = variance / n_samples
 
         return mean, variance
@@ -42,11 +42,10 @@ class Kalman:
         h, v, b = self.h, self.v, self.b
         self.a_corr = a_meas - self.b
 
-        self.b = b
-        self.v = v + (self.a_corr * dt)
         self.h = h + (v * dt) + (0.5 * self.a_corr * dt**2)
-        #c'est ce que t'as fait juste présenté à notre manière
-        
+        self.v = v + (self.a_corr * dt)
+        self.b = b
+
         a11 = self.p_hh + dt * self.p_hv - 0.5 * dt * dt * self.p_hb
         a12 = self.p_hv + dt * self.p_vv - 0.5 * dt * dt * self.p_vb
         a13 = self.p_hb + dt * self.p_vb - 0.5 * dt * dt * self.p_bb
@@ -62,31 +61,28 @@ class Kalman:
 
         return self.h, self.v, self.b
 
-    def update(self, dt):
+    def update(self):
         baro_alt = self.sensors.baro_alt
-        diff = baro_alt - self.h
+        innov = baro_alt - self.h
 
-        s = self.p_hh + self.r # t'es sur qu'il faut toujours diviser par self.p_hh ...
+        s = self.p_hh + self.r  # meme s pr les 3 gains, pas un s different chacun
+        k_h = self.p_hh / s
+        k_v = self.p_hv / s  # dej a la bonne unite, pas besoin de diviser par dt
+        k_b = self.p_hb / s  # pareil, dej en m/s^2 direct
 
-        k_h = self.p_hh / (self.p_hh + self.r)
-        k_v = self.p_hv / (self.p_hv + self.r)
-        k_b = self.p_hb / (self.p_hb + self.r)
-
-        self.h += k_h * diff
-        #self.v += k_v * diff # c'est bizarre de faire m/s + m non ? (avec innov en m)
-        #self.b += k_b * diff # et la des m/s² + m ...
-        self.v += k_v * (diff / dt) # ça paraît plus logique en mettant a la mm unité
-        self.b += k_b * (diff / dt**2) 
+        self.h += k_h * innov
+        self.v += k_v * innov  # pas /dt, casse l'unite sinon
+        self.b += k_b * innov  # pas /dt**2 non plus
 
         new_p_hh = self.p_hh - k_h * self.p_hh
         new_p_hv = self.p_hv - k_h * self.p_hv
         new_p_hb = self.p_hb - k_h * self.p_hb
-        #pourquoi d'un coup tu changes la deuxieme variable ? (j'ai laissé en commenté ce que t'avais mis de base)
-        new_p_vv = self.p_vv - k_v * self.p_vv #self.p_hv 
-        new_p_vb = self.p_vb - k_v * self.p_vb #self.p_hb
-        new_p_bb = self.p_bb - k_b * self.p_bb #self.p_hb
+        new_p_vv = self.p_vv - k_v * self.p_hv  # p_hv pas p_vv, correction passe tjrs par h
+        new_p_vb = self.p_vb - k_v * self.p_hb  # meme logique
+        new_p_bb = self.p_bb - k_b * self.p_hb  # meme logique
 
-        #si t'avais pas fait exprès avant alors on peut enlever ça
+        # les new_p_xx: obligatoire, sinon un calcul utilise une valeur
+        # deja modif au lieu de l'ancienne, resultat faux
         self.p_hh = new_p_hh
         self.p_hv = new_p_hv
         self.p_hb = new_p_hb
@@ -96,8 +92,8 @@ class Kalman:
 
         return self.h, self.v, self.b
 
-"""à mettre dans le main j'imagine ?
-kf = Kalman(r=0.17**2, q_h=..., q_v=..., q_b=...)
+"""a mettre dans le main j'imagine ?
+kf = Kalman(dt)
 kf.calibrate()
 
 # dans la boucle de vol
