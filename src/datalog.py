@@ -46,7 +46,7 @@ class Datalog:
         self.batt_v = batt_v
 
     def log(self, timestamp, phase, accel, gyro, pression_pa, temp_c, alt_baro_m, lat, lon, alt_gps_m, z_kalman_m, vz_kalman_ms, batt_v):
-        self.gather_information(timestamp, phase, accel, gyro, pression_pa, temp_c, alt_baro_m, lat, lon, alt_gps_m, z_kalman_m, vz_kalman_ms, batt_v):
+        self.gather_information(timestamp, phase, accel, gyro, pression_pa, temp_c, alt_baro_m, lat, lon, alt_gps_m, z_kalman_m, vz_kalman_ms, batt_v)
         self.write_to_sdcard(f"{self.timestamp_ms}, {self.phase}, {self.ax}, {self.ay}, {self.az}, {self.gx}, {self.gy}, {self.gz}, {self.pression_pa}, {self.temp_c}, {self.alt_baro_m}, {self.lat}, {self.lon}, {self.alt_gps_m}, {self.z_kalman_m}, {self.vz_kalman_ms}, {self.batt_v}", f"data_{self.filename}.csv")
 
     def send(self, timestamp, phase, accel, gyro, pression_pa, temp_c, alt_baro_m, lat, lon, alt_gps_m, z_kalman_m, vz_kalman_ms, batt_v):
