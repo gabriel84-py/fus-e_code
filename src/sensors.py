@@ -11,7 +11,7 @@ class Sensors:
         # Setup I2C
         self.i2c = busio.I2C(board.GP15, board.GP14)
         # Setup SPI
-        self.spi = busio.SPI(board.GP18, MOSI=board.GP19, MISO=board.GP16)
+        #self.spi = busio.SPI(board.GP18, MOSI=board.GP19, MISO=board.GP16) pas besoin de fait...
         #vérifie : appelle t on les fonctions setup ? non... ptet il faudrais...""
 
     def baro_setup(self):
@@ -48,7 +48,7 @@ class Sensors:
     def imu_accel(self):
         # attention, le capteur est orienté de telle manière que l'axe z de la fusée est aligné en sens et direction avec l'axe x de l'IMU
         self.accel_x, self.accel_y, self.accel_z = self.imu.acceleration
-        return self.accel_z, self.accel_y, self.accel_x #x et z sont donc volontairement intervertis !
+        return self.accel_z, self.accel_y, self.accel_x #x et z sont donc volontairement intervertis ! je l'ai modif
 
     @property
     def imu_gyro(self):
@@ -56,25 +56,12 @@ class Sensors:
         return self.gyro_x, self.gyro_y, self.gyro_z
 
     @property
-    def gps_latlong(self):
+    def gps_data(self):
         self.gps.update()
         if not self.gps.has_fix:
             return None
-        else:
-            return self.gps.latitude, self.gps.longitude
-        
-    @property
-    def gps_alt(self):
-        self.gps.update()
-        if not self.gps.has_fix:
-            return None
-        else:
-            return self.gps.altitude_m if self.gps.altitude_m is not None else 0.0
-        
-    @property
-    def gps_sat(self):
-        self.gps.update()
-        if not self.gps.has_fix:
-            return None
-        else:
-            return self.gps.satellites if self.gps.satellites is not None else 0
+        lat = self.gps.latitude
+        lon = self.gps.longitude
+        alt = self.gps.altitude_m if self.gps.altitude_m is not None else 0.0
+        sat = self.gps.satellites if self.gps.satellites is not None else 0
+        return lat, lon, alt, sat
