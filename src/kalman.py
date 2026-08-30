@@ -6,7 +6,7 @@ import time
 
 class Kalman:
     def __init__(self, dt):
-        self.sensors = Sensors()  # avait disparu, sans ca ca plante direct
+        self.sensors = Sensors()  #calibrate() en a besoin
 
         self.b = None
         self.v = 0
@@ -22,7 +22,7 @@ class Kalman:
         sigma_a = 2.158e-3
         self.q_v = sigma_a**2 * dt
         self.q_h = sigma_a**2 * dt**3 / 3  # dt^3/3 pas dt^2/2, ca c'etait q_hv pas q_h
-        self.q_b = 1e-2
+        self.q_b = 1 * 10**(-9)  # a redebattre, notre balayage donnait plutot 1e-2
 
     def calibrate(self, n_samples=300):
         samples = []
@@ -37,8 +37,7 @@ class Kalman:
 
         return mean, variance
 
-    def prediction(self, dt):
-        a_meas = self.sensors.imu_accel[2]
+    def prediction(self, dt, a_meas):  # a_meas en param, plus de self.sensors ici
         h, v, b = self.h, self.v, self.b
         self.a_corr = a_meas - self.b
 
@@ -61,8 +60,7 @@ class Kalman:
 
         return self.h, self.v, self.b
 
-    def update(self):
-        baro_alt = self.sensors.baro_alt
+    def update(self, baro_alt):  # baro_alt en param, plus de self.sensors ici
         innov = baro_alt - self.h
 
         s = self.p_hh + self.r  # meme s pr les 3 gains, pas un s different chacun
@@ -96,7 +94,8 @@ class Kalman:
 kf = Kalman(dt)
 kf.calibrate()
 
-# dans la boucle de vol
-kf.prediction(dt)
+# dans la boucle de vol, main lit les capteurs et passe les valeurs
+a = kf.sensors.imu_accel[2]
+kf.prediction(dt, a)
 if nouvelle_mesure_baro_disponible:
-    kf.update()"""
+    kf.update(kf.sensors.baro_alt)"""
