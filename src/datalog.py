@@ -51,13 +51,13 @@ class Datalog:
                                  z_kalman_m, vz_kalman_ms, batt_v)
         self.write_to_sdcard(ligne)
 
-    def send(self, timestamp, phase, accel, gyro, pression_pa, temp_c,
+    """def send(self, timestamp, phase, accel, gyro, pression_pa, temp_c,
               alt_baro_m, lat, lon, alt_gps_m, z_kalman_m, vz_kalman_ms,
               batt_v):
         ligne = self._formatter(timestamp, phase, accel, gyro, pression_pa,
                                  temp_c, alt_baro_m, lat, lon, alt_gps_m,
                                  z_kalman_m, vz_kalman_ms, batt_v)
-        self.telem.send(ligne)
+        self.telem.send(ligne)""" # pour le main, à 50Hz et donc avec plusieurs valeurs !
 
 
 """
