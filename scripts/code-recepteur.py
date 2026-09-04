@@ -6,6 +6,8 @@ import storage
 import adafruit_sdcard
 import time
 
+filedata = f"flightdata_{time.time()}"
+
 spi = busio.SPI(board.GP18, MOSI=board.GP19, MISO=board.GP16)
 cs = digitalio.DigitalInOut(board.GP8)
 reset = digitalio.DigitalInOut(board.GP9)
@@ -30,5 +32,5 @@ while True:
     paquet = rfm9x.receive(timeout=5.0)
     if paquet is not None:
         texte = paquet.decode("utf-8", "replace")
-        write_to_sdcard(texte, f"flightdata_{time.time()}")
+        write_to_sdcard(texte, filedata)
         print(texte)
