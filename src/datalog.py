@@ -19,7 +19,7 @@ class Datalog:
 
         self.telem = Telemetry(spi, radio_cs_pin, radio_reset_pin)
 
-        self.filename = f"data_{time.time()}.csv"
+        self.filename = f"/sd/data_{time.time()}.csv"
         self.write_to_sdcard(
             "timestamp_ms, phase, ax, ay, az, gx, gy, gz, pression_pa, "
             "temp_c, alt_baro_m, lat, lon, alt_gps_m, z_kalman_m, "
