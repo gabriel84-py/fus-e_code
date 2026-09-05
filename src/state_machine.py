@@ -38,7 +38,7 @@ class StateMachine:
         elif (self.state == self.state_list[3]) or (self.state == "APOGEEtimer"):
             self.state = self.state_list[4]
 
-        #limit for LANDED
+        #limit for LANDED --> buzzer a fond ici !!
         elif self.state == self.state_list[4]:
             if (t - self.t_decollage) >= 50:
                 self.state = self.state_list[5]
