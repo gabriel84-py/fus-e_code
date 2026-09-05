@@ -4,20 +4,16 @@ import digitalio
 import time
 import storage
 import adafruit_sdcard
-from telemetry import Telemetry
 
 #timestamp_ms, phase, ax, ay, az, gx, gy, gz, pression_pa, temp_c, alt_baro_m, lat, lon, alt_gps_m, z_kalman_m, vz_kalman_ms, batt_v
 
 class Datalog:
-    def __init__(self, radio_cs_pin, radio_reset_pin):
-        spi = busio.SPI(board.GP18, MOSI=board.GP19, MISO=board.GP16)
+    def __init__(self, spi):
 
         cs_sd = digitalio.DigitalInOut(board.GP1)
         self.sdcard = adafruit_sdcard.SDCard(spi, cs_sd)
         vfs = storage.VfsFat(self.sdcard)
         storage.mount(vfs, "/sd")
-
-        self.telem = Telemetry(spi, radio_cs_pin, radio_reset_pin)
 
         self.filename = f"/sd/data_{time.time()}.csv"
         self.write_to_sdcard(
