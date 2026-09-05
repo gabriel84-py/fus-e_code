@@ -6,7 +6,7 @@ import storage
 import adafruit_sdcard
 import time
 
-filedata = f"flightdata_{time.time()}"
+filedata = f"/sd/flightdata_{time.time()}"
 
 spi = busio.SPI(board.GP18, MOSI=board.GP19, MISO=board.GP16)
 cs = digitalio.DigitalInOut(board.GP8)

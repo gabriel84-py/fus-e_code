@@ -1,12 +1,11 @@
-from sensors import Sensors
 import time
 
 #calculer dt dans main a chaque fois qu'on appelle kalman
 #dt en secondes !!!
 
 class Kalman:
-    def __init__(self, dt):
-        self.sensors = Sensors()  #calibrate() en a besoin
+    def __init__(self, dt, Sensors):
+        self.sensors = Sensors  #calibrate() en a besoin
 
         self.b = None
         self.v = 0
