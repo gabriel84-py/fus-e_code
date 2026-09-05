@@ -1,11 +1,7 @@
 #buzzer sur gpio
-import apogee, battery, datalog, kalman, sensors, state_machine, telemetry
+import battery, datalog, kalman, sensors, state_machine, telemetry
 import board
 import busio
-import digitalio
-import adafruit_rfm9x
-import storage
-import adafruit_sdcard
 import time
 
 sta = state_machine.StateMachine()
