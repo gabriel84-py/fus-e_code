@@ -36,11 +36,12 @@ while True:
     imu_accel = sen.imu_accel
     gyro = sen.imu_gyro
 
-    gps = sen.gps_data
-    if gps is None:
-        lat, lon, alt, sat = 0.0, 0.0, 0.0, 0
-    else:
-        lat, lon, alt, sat = gps
+    if sta.state == "DESCENT" or sta.state ==  "LANDED" or sta.state == "PRE_LAUNCH":
+        gps = sen.gps_data
+        if gps is None:
+            lat, lon, alt, sat = 0.0, 0.0, 0.0, 0
+        else:
+            lat, lon, alt, sat = gps
 
     batv = bat.tension
     sec = time.monotonic()
