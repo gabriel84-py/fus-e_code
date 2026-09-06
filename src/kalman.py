@@ -21,7 +21,7 @@ class Kalman:
         sigma_a = 2.158e-3
         self.q_v = sigma_a**2 * dt
         self.q_h = sigma_a**2 * dt**3 / 3  # dt^3/3 pas dt^2/2, ca c'etait q_hv pas q_h
-        self.q_b = 1 * 10**(-9)  # a redebattre, notre balayage donnait plutot 1e-2
+        self.q_b = 1e-2
 
     def calibrate(self, n_samples=300):
         samples = []

@@ -10,6 +10,8 @@ sta.state = "SETUP"
 DT = 0.01
 TELEMETRY_PERIOD = 0.22  # meme cadence que la maj barometrique du Kalman
 
+buzzer = 
+
 SPI = busio.SPI(board.GP18, MOSI=board.GP19, MISO=board.GP16)
 radio_cs_pin, radio_reset_pin = board.GP8, board.GP9
 
@@ -36,7 +38,8 @@ while True:
     imu_accel = sen.imu_accel
     gyro = sen.imu_gyro
 
-    if sta.state == "DESCENT" or sta.state ==  "LANDED" or sta.state == "PRE_LAUNCH":
+    if sta.state == "DESCENT" or sta.state == "LANDED" or sta.state == "PRE_LAUNCH":
+        
         gps = sen.gps_data
         if gps is None:
             lat, lon, alt, sat = 0.0, 0.0, 0.0, 0
