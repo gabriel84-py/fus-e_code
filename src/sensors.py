@@ -10,9 +10,10 @@ class Sensors:
     def __init__(self):
         # Setup I2C
         self.i2c = busio.I2C(board.GP15, board.GP14)
-        # Setup SPI
-        #self.spi = busio.SPI(board.GP18, MOSI=board.GP19, MISO=board.GP16) pas besoin de fait...
-        #vérifie : appelle t on les fonctions setup ? non... ptet il faudrais...""
+        # Setup composants
+        self.baro_setup()
+        self.imu_setup()
+        self.gps_setup()
 
     def baro_setup(self):
         self.bmp = adafruit_bmp3xx.BMP3XX_I2C(self.i2c)

@@ -1,9 +1,9 @@
 import analogio
-from board import *
+import board
 
 class Battery:
     def __init__(self):
-        self.pin = analogio.AnalogIn(board.GP28) #erreur, je te laisse trouver....
+        self.pin = analogio.AnalogIn(board.GP28)
 
     # V_adc = V_batt R2/(R1+R2) -> V_batt = V_adc (R1 +R2)/R2
     @property
