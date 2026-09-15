@@ -8,9 +8,9 @@ from adafruit_lsm6ds.lsm6dso32 import LSM6DSO32
 
 class Sensors:
     def __init__(self):
-        # Setup I2C
-        self.i2c = busio.I2C(board.GP15, board.GP14)
-        # Setup composants
+        # I2C Fast Mode (400 kHz) : BMP388 et LSM6DSO32 le supportent tous
+        # les deux, et chaque property fait sa propre transaction I2C
+        self.i2c = busio.I2C(board.GP15, board.GP14, frequency=400000)
         self.baro_setup()
         self.imu_setup()
         self.gps_setup()
@@ -26,7 +26,10 @@ class Sensors:
     def gps_setup(self):
         RX = board.GP13
         TX = board.GP12
-        uart = busio.UART(TX, RX, baudrate=9600, timeout=30)
+        # timeout 1 s (pas 30 s) : au 1 Hz configure par PMTK220,1000, une
+        # trame arrive au moins 1x/s en fonctionnement normal ; 30 s aurait
+        # pu geler toute la boucle de vol en cas de souci GPS
+        uart = busio.UART(TX, RX, baudrate=9600, timeout=1)
         self.gps = adafruit_gps.GPS(uart, debug=False)
         self.gps.send_command(b'PMTK314,0,1,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0')
         self.gps.send_command(b'PMTK220,1000')
@@ -39,6 +42,9 @@ class Sensors:
 
     @property
     def baro_alt(self):
+        # redeclenche sa propre lecture I2C de la pression en interne ; si
+        # baro_pa a deja ete lu ce tour-ci, preferer recalculer l'altitude
+        # a partir de cette valeur (cf compute_altitude() dans main.py)
         return self.bmp.altitude
 
     @property

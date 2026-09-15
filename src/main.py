@@ -1,4 +1,4 @@
-# buzzer sur GP3 : allume en continu de PRE_LAUNCH a LANDED (voir plus bas)
+# buzzer sur GP3 : allume en continu de PRE_LAUNCH a LANDED
 import battery, datalog, kalman, sensors, state_machine, telemetry
 import board
 import busio
@@ -6,36 +6,43 @@ import digitalio
 import time
 
 DT = 0.01
-TELEMETRY_PERIOD = 0.22  # meme cadence que la maj barometrique du Kalman
-GROUND_PRESSURE_SAMPLES = 20  # nb de mesures moyennees pour la ref baro sol
-DEBUG_FREQ = True  # affiche la freq de boucle reelle sur le REPL, 1x/s ;
-                    # a couper (False) au jour J si tu veux zero overhead
-BUZZER_ENABLED = False  # False au banc pour couper le son
+# marge large au-dessus de l'airtime LoRa mesure sur banc (~180 ms avec le
+# format compact) : evite que l'envoi radio se redeclenche a chaque tour
+# de boucle si un envoi depasse la periode prevue
+TELEMETRY_PERIOD = 1.0
+GROUND_PRESSURE_SAMPLES = 50  # mesures moyennees pour la ref baro sol
+
+DEBUG_FREQ = True   # affiche un etat de vol basique sur le REPL, 1x/s ; False au jour J pour zero overhead
+BUZZER_ENABLED = False  # False au banc pour couper le son sans changer la logique de vol
+
+
+def compute_altitude(pressure_hpa, sea_level_hpa):
+    # formule de adafruit_bmp3xx.altitude, appliquee a une pression deja lue
+    # (baro_pa) pour eviter une 2e lecture I2C de la pression rien que pour
+    # l'altitude (cf sensors.baro_alt)
+    return 44330.0 * (1.0 - (pressure_hpa / sea_level_hpa) ** 0.1903)
+
 
 sta = state_machine.StateMachine()
 sta.state = "SETUP"
 
 buzzer = digitalio.DigitalInOut(board.GP3)
 buzzer.direction = digitalio.Direction.OUTPUT
-buzzer.value = False  # reste eteint pendant l'init/calibration au sol
+buzzer.value = False
 
 
 def set_buzzer(state):
-    # point d'entree unique pour piloter GP3 : que ce soit le bip continu
-    # de vol ou l'alarme rapide d'echec d'init, tout passe par ici, donc
-    # BUZZER_ENABLED coupe le son dans les deux cas sans dupliquer la
-    # condition a chaque endroit ou on ecrit sur la broche
+    # seul point d'ecriture sur GP3 : BUZZER_ENABLED coupe le son partout
+    # (bip de vol comme alarme d'echec init) sans dupliquer la condition
     buzzer.value = state and BUZZER_ENABLED
+
 
 SPI = busio.SPI(board.GP18, MOSI=board.GP19, MISO=board.GP16)
 radio_cs_pin, radio_reset_pin = board.GP8, board.GP9
 
-# --- initialisation capteurs/peripheriques + calage baro, avec diagnostic ---
-# tout ce qui peut echouer au pas de tir (capteur mal connecte, SD absente,
-# radio qui ne repond pas) est regroupe ici : si ca casse, on le signale au
-# buzzer et on bloque plutot que de decoller avec une chaine de mesure
-# incomplete. C'est volontairement un except large : a ce stade on ne fait
-# aucune distinction fine entre les pannes, on veut juste NE PAS voler.
+# init complete + calage baro, protegee : une panne ici bloque au sol avec
+# une alarme sonore plutot que de decoller avec une chaine de mesure
+# incomplete
 try:
     sen = sensors.Sensors()
     bat = battery.Battery()
@@ -45,18 +52,15 @@ try:
     kal = kalman.Kalman(DT, sen)
     kal_cal = kal.calibrate(300)
 
-    # calage barometrique : pression sol mesuree ICI = reference 0 m.
-    # fusee posee au sol, avant le sleep(5) et la mise en config de vol.
+    # pression sol = reference 0 m, fusee posee au sol, avant le sleep(5)
     ground_pressure_samples = []
     for _ in range(GROUND_PRESSURE_SAMPLES):
         ground_pressure_samples.append(sen.baro_pa)
-        time.sleep(0.05)  # laisse le temps au BMP388 de rafraichir sa mesure
+        time.sleep(0.05)
     sen.bmp.sea_level_pressure = sum(ground_pressure_samples) / GROUND_PRESSURE_SAMPLES
 
 except Exception as exc:
-    # motif distinct de tout ce qui arrive en vol : bips rapides en boucle
-    # infinie, pour qu'une panne d'init soit immediatement reconnaissable
-    # au pas de tir et ne soit jamais confondue avec un etat de vol normal
+    # bips rapides en boucle : motif distinct de tout etat de vol normal
     print("ECHEC INIT:", exc)
     beep_state = False
     while True:
@@ -67,75 +71,70 @@ except Exception as exc:
 time.sleep(5)
 sta.state = "PRE_LAUNCH"
 
-# buzzer allume en continu a partir d'ici, sur toutes les phases de vol
-# (PRE_LAUNCH -> BOOST -> COAST -> APOGEE -> DESCENT -> LANDED) : un seul
-# passage a True suffit, pas besoin de le reecrire a chaque tour de boucle
+# bip continu de PRE_LAUNCH a LANDED, un seul passage a True suffit
 set_buzzer(True)
 
-# on stocke des TIMESTAMPS ici
 t_prev_pred = time.monotonic()
 t_prev_upd = time.monotonic()
 t_prev_tel = time.monotonic()
-t_prev_freq = time.monotonic()
-loop_count = 0
+t_prev_debug = time.monotonic()
 
-# derniere position GPS connue ; reste a 0.0/0 tant qu'aucun fix n'a ete pris
+# derniere position GPS connue ; ne retombe pas a 0.0/0 si le fix est perdu
 lat, lon, alt, sat = 0.0, 0.0, 0.0, 0
 
 while True:
-    baro_pa = sen.baro_pa
-    baro_alt = sen.baro_alt
-    baro_temp = sen.baro_temp
-    imu_accel = sen.imu_accel
-    gyro = sen.imu_gyro
+    # boucle entierement protegee : un incident transitoire sur un
+    # sous-systeme (I2C, radio, SD) ne doit jamais arreter la machine
+    # d'etat ni le buzzer
+    try:
+        baro_pa = sen.baro_pa
+        baro_alt = compute_altitude(baro_pa, sen.bmp.sea_level_pressure)
+        baro_temp = sen.baro_temp
+        imu_accel = sen.imu_accel
+        gyro = sen.imu_gyro
 
-    if sta.state == "DESCENT" or sta.state == "LANDED" or sta.state == "PRE_LAUNCH":
-        gps = sen.gps_data
-        # si gps is None (fix perdu), on garde volontairement la derniere
-        # position connue au lieu de retomber a 0.0/0 : perdre le fix
-        # pendant la recherche au sol ne doit pas effacer la derniere
-        # coordonnee valide envoyee en telemetrie
-        if gps is not None:
-            lat, lon, alt, sat = gps
+        if sta.state == "DESCENT" or sta.state == "LANDED" or sta.state == "PRE_LAUNCH":
+            gps = sen.gps_data
+            if gps is not None:
+                lat, lon, alt, sat = gps
 
-    batv = bat.tension
-    sec = time.monotonic()
+        batv = bat.tension
+        sec = time.monotonic()
 
-    # --- prediction Kalman : dt recalcule a chaque tour, timestamp reinjecte ---
-    dt_pred = sec - t_prev_pred
-    t_prev_pred = sec
-    kal_h, kal_v, kal_b = kal.prediction(dt_pred, imu_accel[2])
+        dt_pred = sec - t_prev_pred
+        t_prev_pred = sec
+        kal_h, kal_v, kal_b = kal.prediction(dt_pred, imu_accel[2])
 
-    # --- recalage barometrique a ~0,22 s (limite par la freq du BMP388) ---
-    if sec - t_prev_upd >= 0.22:
-        kal_h, kal_v, kal_b = kal.update(baro_alt)
-        t_prev_upd = sec
+        if sec - t_prev_upd >= 0.22:
+            kal_h, kal_v, kal_b = kal.update(baro_alt)
+            t_prev_upd = sec
 
-    sta.update(sec, imu_accel[2], kal_v, kal_h)
+        sta.update(sec, imu_accel[2], kal_v, kal_h)
 
-    dat.log(
-        sec, sta.state, imu_accel, gyro,
-        baro_pa, baro_temp, baro_alt,
-        lat, lon, alt,
-        kal_h, kal_v, batv
-    )
-
-    if sec - t_prev_tel >= TELEMETRY_PERIOD:
-        to_send = dat._formatter(
+        dat.log(
             sec, sta.state, imu_accel, gyro,
             baro_pa, baro_temp, baro_alt,
             lat, lon, alt,
             kal_h, kal_v, batv
         )
-        tel.send(to_send)
-        t_prev_tel = sec
 
-    # --- mesure de la freq de boucle reelle, pour le banc ---
-    # print() sur le REPL uniquement, jamais ecrit sur la SD : ca ne doit
-    # pas ajouter d'I/O disque et fausser la mesure qu'on cherche a faire
-    if DEBUG_FREQ:
-        loop_count += 1
-        if sec - t_prev_freq >= 1.0:
-            print("freq boucle:", loop_count, "Hz (etat=", sta.state, ")")
-            loop_count = 0
-            t_prev_freq = sec
+        if sec - t_prev_tel >= TELEMETRY_PERIOD:
+            # version compacte pour la radio (memes champs, moins de
+            # decimales) : seule copie qui survit si la fusee/la SD est
+            # perdue, donc on garde tous les champs
+            to_send = dat._formatter_compact(
+                sec, sta.state, imu_accel, gyro,
+                baro_pa, baro_temp, baro_alt,
+                lat, lon, alt,
+                kal_h, kal_v, batv
+            )
+            tel.send(to_send)
+            t_prev_tel = sec
+
+        if DEBUG_FREQ and sec - t_prev_debug >= 1.0:
+            print("etat=", sta.state, " h=", round(kal_h, 2), "m v=", round(kal_v, 2), "m/s batt=", batv, "V")
+            t_prev_debug = sec
+
+    except Exception as exc:
+        print("ERREUR BOUCLE:", exc)
+        continue
