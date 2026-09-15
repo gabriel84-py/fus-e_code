@@ -9,7 +9,8 @@ DT = 0.01
 TELEMETRY_PERIOD = 0.22  # meme cadence que la maj barometrique du Kalman
 GROUND_PRESSURE_SAMPLES = 20  # nb de mesures moyennees pour la ref baro sol
 DEBUG_FREQ = True  # affiche la freq de boucle reelle sur le REPL, 1x/s ;
-                    # a couper (False) au jour J
+                    # a couper (False) au jour J si tu veux zero overhead
+BUZZER_ENABLED = False  # False au banc pour couper le son
 
 sta = state_machine.StateMachine()
 sta.state = "SETUP"
@@ -17,6 +18,14 @@ sta.state = "SETUP"
 buzzer = digitalio.DigitalInOut(board.GP3)
 buzzer.direction = digitalio.Direction.OUTPUT
 buzzer.value = False  # reste eteint pendant l'init/calibration au sol
+
+
+def set_buzzer(state):
+    # point d'entree unique pour piloter GP3 : que ce soit le bip continu
+    # de vol ou l'alarme rapide d'echec d'init, tout passe par ici, donc
+    # BUZZER_ENABLED coupe le son dans les deux cas sans dupliquer la
+    # condition a chaque endroit ou on ecrit sur la broche
+    buzzer.value = state and BUZZER_ENABLED
 
 SPI = busio.SPI(board.GP18, MOSI=board.GP19, MISO=board.GP16)
 radio_cs_pin, radio_reset_pin = board.GP8, board.GP9
@@ -49,16 +58,19 @@ except Exception as exc:
     # infinie, pour qu'une panne d'init soit immediatement reconnaissable
     # au pas de tir et ne soit jamais confondue avec un etat de vol normal
     print("ECHEC INIT:", exc)
+    beep_state = False
     while True:
-        buzzer.value = not buzzer.value
+        beep_state = not beep_state
+        set_buzzer(beep_state)
         time.sleep(0.1)
 
 time.sleep(5)
 sta.state = "PRE_LAUNCH"
 
 # buzzer allume en continu a partir d'ici, sur toutes les phases de vol
-# (PRE_LAUNCH -> BOOST -> COAST -> APOGEE -> DESCENT -> LANDED)
-buzzer.value = True
+# (PRE_LAUNCH -> BOOST -> COAST -> APOGEE -> DESCENT -> LANDED) : un seul
+# passage a True suffit, pas besoin de le reecrire a chaque tour de boucle
+set_buzzer(True)
 
 # on stocke des TIMESTAMPS ici
 t_prev_pred = time.monotonic()
@@ -79,8 +91,10 @@ while True:
 
     if sta.state == "DESCENT" or sta.state == "LANDED" or sta.state == "PRE_LAUNCH":
         gps = sen.gps_data
-        # si gps is None (fix perdu), on garde la derniere
-        # position connue au lieu de retomber a 0.0/0
+        # si gps is None (fix perdu), on garde volontairement la derniere
+        # position connue au lieu de retomber a 0.0/0 : perdre le fix
+        # pendant la recherche au sol ne doit pas effacer la derniere
+        # coordonnee valide envoyee en telemetrie
         if gps is not None:
             lat, lon, alt, sat = gps
 
@@ -92,7 +106,7 @@ while True:
     t_prev_pred = sec
     kal_h, kal_v, kal_b = kal.prediction(dt_pred, imu_accel[2])
 
-    # --- recalage barometrique a 0,22 s (limite par la freq du BMP388) ---
+    # --- recalage barometrique a ~0,22 s (limite par la freq du BMP388) ---
     if sec - t_prev_upd >= 0.22:
         kal_h, kal_v, kal_b = kal.update(baro_alt)
         t_prev_upd = sec
