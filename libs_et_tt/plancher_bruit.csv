@@ -1,0 +1,17 @@
+# LUNATIK - plancher de bruit BMP388
+# modele sigma^2 = A/OS + B, moindres carres ponderes w=1/u^2
+# A_Pa2,23.818890,u_A_Pa2,0.261310
+# B_Pa2,1.030498,u_B_Pa2,0.040692
+# A_ordinaire_Pa2,23.657710,B_ordinaire_Pa2,1.101750
+# chi2_reduit,12.914110,R2,0.999170
+# B_significativite_sigma,25.324
+# sigma_plancher_Pa,1.015134,u_Pa,0.020043
+# gradient_Pa_par_m,11.465996
+# plancher_altitude_cm,8.8534,u_cm,0.1748
+
+OS,inv_OS,sigma_p_Pa,variance_Pa2,u_variance_Pa2,variance_modele_Pa2,ecart_normalise,cadence_Hz,sigma_h_cm,gradient_Pa_par_m
+1,1.000000,4.9750,24.750610,0.350061,24.849380,-0.2822,126.62,43.3426,11.4783
+2,0.500000,3.5800,12.816404,0.181269,12.939944,-0.6815,126.38,31.2134,11.4694
+4,0.250000,2.7240,7.420176,0.104948,6.985220,+4.1445,80.42,23.7596,11.4648
+8,0.125000,1.9440,3.779136,0.053450,4.007859,-4.2791,46.62,16.9625,11.4606
+16,0.062500,1.6060,2.579236,0.036480,2.519179,+1.6463,26.86,14.0179,11.4568

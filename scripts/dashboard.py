@@ -4,8 +4,8 @@ Dashboard LUNATIK - tableau de bord temps reel
 
 Lit les trames telemetrie relayees par le recepteur LoRa sol (Pico
 branche en USB sur ce PC) et affiche : etat de la state machine,
-altitude et vitesse (Kalman), tension batterie, qualite de liaison
-(RSSI/SNR), estimation du taux de perte de paquets.
+altitude et vitesse (Kalman), position GPS, tension batterie, qualite
+de liaison (RSSI/SNR), estimation du taux de perte de paquets.
 
 Prerequis :
     pip install pyserial matplotlib
@@ -19,18 +19,19 @@ Format de trame attendu, une ligne ASCII par paquet. Deux variantes
 acceptees automatiquement :
 
   Avec recepteur_sol.py (prefixe TLM + rssi/snr ajoutes cote sol) :
-    TLM,t,phase,ax,ay,az,gx,gy,gz,pression_pa,temp_c,alt_baro_m,lat,lon,alt_gps_m,h,v,batt,rssi,snr
+    TLM,t,phase,ax,ay,az,gx,gy,gz,pression_pa,temp_c,alt_baro_m,lat,lon,alt_gps_m,sat,h,v,batt,rssi,snr
 
   Avec l'ancien code-recepteur.py (relai brut, sans rssi/snr) :
-    t,phase,ax,ay,az,gx,gy,gz,pression_pa,temp_c,alt_baro_m,lat,lon,alt_gps_m,h,v,batt
+    t,phase,ax,ay,az,gx,gy,gz,pression_pa,temp_c,alt_baro_m,lat,lon,alt_gps_m,sat,h,v,batt
 
-Les 17 champs "t,...,batt" correspondent exactement a la sortie de
-datalog.py::_formatter() cote fusee (src/datalog.py). Seuls t, phase, h
-(altitude Kalman), v (vitesse Kalman) et batt sont affiches ; le reste
-est parse mais non utilise pour l'instant.
+Les 18 champs "t,...,batt" correspondent exactement a la sortie de
+datalog.py::_formatter_compact() cote fusee (src/datalog.py). t, phase,
+h (altitude Kalman), v (vitesse Kalman), lat/lon/alt_gps_m/sat et batt
+sont affiches ; ax/ay/az/gx/gy/gz/pression_pa/temp_c/alt_baro_m sont
+parses mais non utilises pour l'instant.
 
-Si _formatter() change de forme, seule la liste TELEMETRY_FIELDS et
-parse_line() doivent etre adaptees : le reste du script n'en depend pas.
+Si _formatter_compact() change de forme, seule la liste TELEMETRY_FIELDS
+et parse_line() doivent etre adaptees : le reste du script n'en depend pas.
 """
 
 import argparse
@@ -56,13 +57,12 @@ STATE_COLORS = {
     "LANDED": "#43a047",
 }
 
-# Ordre exact des 17 champs envoyes par datalog.py::_formatter() cote fusee.
-# Les noms ici sont ceux utilises en interne par le dashboard (pas forcement
-# identiques aux noms cote firmware) ; seuls "t", "phase", "h", "v", "batt"
-# sont effectivement affiches, le reste est garde au cas ou.
+# Ordre exact des 18 champs envoyes par datalog.py::_formatter_compact()
+# cote fusee. Les noms ici sont ceux utilises en interne par le dashboard
+# (pas forcement identiques aux noms cote firmware).
 TELEMETRY_FIELDS = [
     "t", "phase", "ax", "ay", "az", "gx", "gy", "gz",
-    "pression_pa", "temp_c", "alt_baro_m", "lat", "lon", "alt_gps_m",
+    "pression_pa", "temp_c", "alt_baro_m", "lat", "lon", "alt_gps_m", "sat",
     "h", "v", "batt",
 ]
 
@@ -83,9 +83,9 @@ def parse_line(raw_line):
     """Parse une ligne brute recue sur le port serie.
 
     Deux formats acceptes :
-      - avec recepteur_sol.py :  TLM,<17 champs _formatter>,<rssi>,<snr>
+      - avec recepteur_sol.py :  TLM,<18 champs _formatter_compact>,<rssi>,<snr>
       - avec l'ancien code-recepteur.py (sans prefixe, sans rssi/snr) :
-        <17 champs _formatter>
+        <18 champs _formatter_compact>
 
     Renvoie un dict, ou None si la ligne ne correspond a aucun des deux."""
     line = raw_line.strip()
@@ -182,6 +182,7 @@ class SimulatedSource(threading.Thread):
         self.out_queue.put(("status", "Mode simulation (aucun port serie utilise)"))
         t = 0.0
         batt = 4.15
+        lat0, lon0 = 43.9493, 4.8055  # Avignon, point de depart fictif
         while not self._stop.is_set():
             # profil de vol simplifie : montee balistique puis retombee
             if t < 2.0:
@@ -209,7 +210,19 @@ class SimulatedSource(threading.Thread):
             rssi = -40 - 0.05 * h + random.uniform(-2, 2)
             snr = 9.5 - 0.01 * h + random.uniform(-0.5, 0.5)
 
+            # derive laterale fictive pendant la descente, fix GPS seulement
+            # apres le decollage (comme sur le vrai firmware, PRE_LAUNCH/
+            # DESCENT/LANDED seulement)
+            if phase in ("PRE_LAUNCH",):
+                lat, lon, alt_gps, sat = lat0, lon0, 24.0, 8
+            elif phase in ("DESCENT", "LANDED"):
+                drift = 0.0003 * (t - 9.0)
+                lat, lon, alt_gps, sat = lat0 + drift, lon0 + drift * 0.5, max(24.0, h), 8
+            else:
+                lat, lon, alt_gps, sat = lat0, lon0, 24.0, 8
+
             telem = {"t": t, "phase": phase, "h": h, "v": v, "batt": batt,
+                     "lat": lat, "lon": lon, "alt_gps_m": alt_gps, "sat": sat,
                      "rssi": rssi, "snr": snr}
             self.out_queue.put(("telemetry", telem))
 
@@ -224,7 +237,7 @@ class Dashboard(tk.Tk):
     def __init__(self, port, baudrate, simulate=False):
         super().__init__()
         self.title("LUNATIK - Tableau de bord" + (" [SIMULATION]" if simulate else ""))
-        self.geometry("1100x720")
+        self.geometry("1100x760")
         self.configure(bg="#1e1e1e")
 
         self.data_queue = queue.Queue()
@@ -265,13 +278,14 @@ class Dashboard(tk.Tk):
         self.status_var = tk.StringVar(value="Non connecte")
         self.alt_var = tk.StringVar(value="Altitude : -- m")
         self.vel_var = tk.StringVar(value="Vitesse  : -- m/s")
+        self.gps_var = tk.StringVar(value="GPS : pas de fix")
         self.batt_var = tk.StringVar(value="Batterie : -- V")
         self.link_var = tk.StringVar(value="RSSI -- dBm   SNR -- dB")
         self.loss_var = tk.StringVar(value="Paquets : 0 (0.0% pertes est.)")
 
         rows = [
-            (self.alt_var, 16), (self.vel_var, 16), (self.batt_var, 14),
-            (self.link_var, 14), (self.loss_var, 12),
+            (self.alt_var, 16), (self.vel_var, 16), (self.gps_var, 14),
+            (self.batt_var, 14), (self.link_var, 14), (self.loss_var, 12),
         ]
         for var, size in rows:
             tk.Label(info, textvariable=var, font=("Consolas", size),
@@ -334,6 +348,23 @@ class Dashboard(tk.Tk):
         )
         self.alt_var.set("Altitude : {:.1f} m".format(telem["h"]))
         self.vel_var.set("Vitesse  : {:+.1f} m/s".format(telem["v"]))
+
+        # sat==0 (champ absent des anciennes trames -> defaut a 0 via .get)
+        # veut dire "aucun fix" : afficher lat/lon a 0.0/0.0 dans ce cas
+        # donnerait une fausse position (milieu de nulle part), pas une
+        # absence de donnee. sat sert uniquement a cette detection, il
+        # n'est plus affiche tel quel.
+        sat = int(telem.get("sat", 0))
+        if sat <= 0:
+            self.gps_var.set("GPS : pas de fix")
+        else:
+            self.gps_var.set(
+                "GPS : {:.5f}, {:.5f}  alt {:.0f} m".format(
+                    telem.get("lat", 0.0), telem.get("lon", 0.0),
+                    telem.get("alt_gps_m", 0.0),
+                )
+            )
+
         self.batt_var.set("Batterie : {:.2f} V".format(telem["batt"]))
         if telem["rssi"] is not None and telem["snr"] is not None:
             self.link_var.set("RSSI {:.0f} dBm   SNR {:.1f} dB".format(telem["rssi"], telem["snr"]))
