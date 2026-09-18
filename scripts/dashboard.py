@@ -19,16 +19,25 @@ Format de trame attendu, une ligne ASCII par paquet. Deux variantes
 acceptees automatiquement :
 
   Avec recepteur_sol.py (prefixe TLM + rssi/snr ajoutes cote sol) :
-    TLM,t,phase,ax,ay,az,gx,gy,gz,pression_pa,temp_c,alt_baro_m,lat,lon,alt_gps_m,sat,h,v,batt,rssi,snr
+    TLM,t,phase,ax,ay,az,gx,gy,gz,pression_pa,temp_c,alt_baro_m,lat,lon,alt_gps_m,h,v,batt,rssi,snr
 
   Avec l'ancien code-recepteur.py (relai brut, sans rssi/snr) :
-    t,phase,ax,ay,az,gx,gy,gz,pression_pa,temp_c,alt_baro_m,lat,lon,alt_gps_m,sat,h,v,batt
+    t,phase,ax,ay,az,gx,gy,gz,pression_pa,temp_c,alt_baro_m,lat,lon,alt_gps_m,h,v,batt
 
-Les 18 champs "t,...,batt" correspondent exactement a la sortie de
-datalog.py::_formatter_compact() cote fusee (src/datalog.py). t, phase,
-h (altitude Kalman), v (vitesse Kalman), lat/lon/alt_gps_m/sat et batt
-sont affiches ; ax/ay/az/gx/gy/gz/pression_pa/temp_c/alt_baro_m sont
-parses mais non utilises pour l'instant.
+Les 17 champs "t,...,batt" correspondent exactement a la sortie de
+datalog.py::_formatter_compact() cote fusee (src/datalog.py), telle
+qu'appelee par main.py. t, phase, h (altitude Kalman), v (vitesse
+Kalman), lat/lon/alt_gps_m et batt sont affiches ; ax/ay/az/gx/gy/gz/
+pression_pa/temp_c/alt_baro_m sont parses mais non utilises pour
+l'instant.
+
+NOTE : le champ "sat" (nombre de satellites GPS) n'est PAS transmis
+par main.py actuellement (main.py recupere sat via sen.gps_data mais
+ne le passe pas a dat.log()/dat._formatter_compact()). Le dashboard
+ne peut donc pas s'appuyer dessus pour detecter un fix GPS valide : il
+se base a la place sur lat/lon != (0.0, 0.0). Si sat est ajoute un
+jour cote firmware, remettre "sat" dans TELEMETRY_FIELDS et repasser
+la detection de fix sur ce champ (plus fiable qu'un test sur lat/lon).
 
 Si _formatter_compact() change de forme, seule la liste TELEMETRY_FIELDS
 et parse_line() doivent etre adaptees : le reste du script n'en depend pas.
@@ -57,12 +66,13 @@ STATE_COLORS = {
     "LANDED": "#43a047",
 }
 
-# Ordre exact des 18 champs envoyes par datalog.py::_formatter_compact()
-# cote fusee. Les noms ici sont ceux utilises en interne par le dashboard
-# (pas forcement identiques aux noms cote firmware).
+# Ordre exact des 17 champs envoyes par datalog.py::_formatter_compact()
+# cote fusee, tel qu'appele par main.py aujourd'hui (sans sat). Les noms
+# ici sont ceux utilises en interne par le dashboard (pas forcement
+# identiques aux noms cote firmware).
 TELEMETRY_FIELDS = [
     "t", "phase", "ax", "ay", "az", "gx", "gy", "gz",
-    "pression_pa", "temp_c", "alt_baro_m", "lat", "lon", "alt_gps_m", "sat",
+    "pression_pa", "temp_c", "alt_baro_m", "lat", "lon", "alt_gps_m",
     "h", "v", "batt",
 ]
 
@@ -83,9 +93,9 @@ def parse_line(raw_line):
     """Parse une ligne brute recue sur le port serie.
 
     Deux formats acceptes :
-      - avec recepteur_sol.py :  TLM,<18 champs _formatter_compact>,<rssi>,<snr>
+      - avec recepteur_sol.py :  TLM,<17 champs _formatter_compact>,<rssi>,<snr>
       - avec l'ancien code-recepteur.py (sans prefixe, sans rssi/snr) :
-        <18 champs _formatter_compact>
+        <17 champs _formatter_compact>
 
     Renvoie un dict, ou None si la ligne ne correspond a aucun des deux."""
     line = raw_line.strip()
@@ -349,19 +359,17 @@ class Dashboard(tk.Tk):
         self.alt_var.set("Altitude : {:.1f} m".format(telem["h"]))
         self.vel_var.set("Vitesse  : {:+.1f} m/s".format(telem["v"]))
 
-        # sat==0 (champ absent des anciennes trames -> defaut a 0 via .get)
-        # veut dire "aucun fix" : afficher lat/lon a 0.0/0.0 dans ce cas
-        # donnerait une fausse position (milieu de nulle part), pas une
-        # absence de donnee. sat sert uniquement a cette detection, il
-        # n'est plus affiche tel quel.
-        sat = int(telem.get("sat", 0))
-        if sat <= 0:
+        # main.py ne transmet pas le champ sat pour l'instant (voir note
+        # en tete de fichier), donc on detecte un fix GPS via lat/lon
+        # plutot que via sat. (0.0, 0.0) ou absent = pas de fix.
+        lat = telem.get("lat")
+        lon = telem.get("lon")
+        if lat is None or lon is None or (lat == 0.0 and lon == 0.0):
             self.gps_var.set("GPS : pas de fix")
         else:
             self.gps_var.set(
                 "GPS : {:.5f}, {:.5f}  alt {:.0f} m".format(
-                    telem.get("lat", 0.0), telem.get("lon", 0.0),
-                    telem.get("alt_gps_m", 0.0),
+                    lat, lon, telem.get("alt_gps_m", 0.0),
                 )
             )
 
