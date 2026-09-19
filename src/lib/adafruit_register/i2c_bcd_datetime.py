@@ -19,7 +19,7 @@ import time
 try:
     from typing import Optional, Type
 
-    from circuitpython_typing.device_drivers import I2CDeviceDriver
+    from lib.circuitpython_typing.device_drivers import I2CDeviceDriver
     from typing_extensions import Literal
 except ImportError:
     pass

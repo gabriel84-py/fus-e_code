@@ -42,14 +42,14 @@ Implementation Notes
 
 import time
 
-from adafruit_bus_device import spi_device
+from lib.adafruit_bus_device import spi_device
 from micropython import const
 
 try:
     from typing import Optional, Union
 
     from busio import SPI
-    from circuitpython_typing import ReadableBuffer, WriteableBuffer
+    from lib.circuitpython_typing import ReadableBuffer, WriteableBuffer
     from digitalio import DigitalInOut
 except ImportError:
     pass

@@ -412,7 +412,7 @@ class LIS3DH_I2C(LIS3DH):
         int1: Optional[digitalio.DigitalInOut] = None,
         int2: Optional[digitalio.DigitalInOut] = None,
     ) -> None:
-        from adafruit_bus_device import (  # noqa: PLC0415
+        from lib.adafruit_bus_device import (  # noqa: PLC0415
             i2c_device,
         )
 
@@ -475,7 +475,7 @@ class LIS3DH_SPI(LIS3DH):
         int1: Optional[digitalio.DigitalInOut] = None,
         int2: Optional[digitalio.DigitalInOut] = None,
     ) -> None:
-        from adafruit_bus_device import (  # noqa: PLC0415
+        from lib.adafruit_bus_device import (  # noqa: PLC0415
             spi_device,
         )
 

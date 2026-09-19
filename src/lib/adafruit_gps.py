@@ -35,7 +35,7 @@ try:
     from typing import List, Optional, Tuple
 
     from busio import I2C, UART
-    from circuitpython_typing import ReadableBuffer
+    from lib.circuitpython_typing import ReadableBuffer
     from typing_extensions import Literal
 except ImportError:
     pass
@@ -772,7 +772,7 @@ class GPS_GtopI2C(GPS):
         debug: bool = False,
         timeout: float = 5.0,
     ) -> None:
-        from adafruit_bus_device import i2c_device  # noqa: PLC0415
+        from lib.adafruit_bus_device import i2c_device  # noqa: PLC0415
 
         super().__init__(None, debug)  # init the parent with no UART
         self._i2c = i2c_device.I2CDevice(i2c_bus, address)

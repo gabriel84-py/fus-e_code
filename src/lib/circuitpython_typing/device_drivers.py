@@ -9,8 +9,8 @@ Type annotation definitions for device drivers. Used for `adafruit_register`.
 * Author(s): Alec Delaney
 """
 
-from adafruit_bus_device.i2c_device import I2CDevice
-from adafruit_bus_device.spi_device import SPIDevice
+from lib.adafruit_bus_device.i2c_device import I2CDevice
+from lib.adafruit_bus_device.spi_device import SPIDevice
 from typing_extensions import Protocol  # Safety import for Python 3.7
 
 

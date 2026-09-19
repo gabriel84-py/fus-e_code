@@ -17,7 +17,7 @@ __repo__ = "https://github.com/adafruit/Adafruit_CircuitPython_Register.git"
 try:
     from typing import NoReturn, Optional, Type
 
-    from circuitpython_typing.device_drivers import I2CDeviceDriver
+    from lib.circuitpython_typing.device_drivers import I2CDeviceDriver
 except ImportError:
     pass
 

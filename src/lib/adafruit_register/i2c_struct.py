@@ -19,7 +19,7 @@ import struct
 try:
     from typing import Any, NoReturn, Optional, Tuple, Type
 
-    from circuitpython_typing.device_drivers import I2CDeviceDriver
+    from lib.circuitpython_typing.device_drivers import I2CDeviceDriver
 except ImportError:
     pass
 

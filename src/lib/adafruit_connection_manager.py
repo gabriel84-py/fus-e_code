@@ -32,7 +32,7 @@ WIZNET5K_SSL_SUPPORT_VERSION = (9, 1)
 if not sys.implementation.name == "circuitpython":
     from typing import List, Optional, Tuple
 
-    from circuitpython_typing.socket import (
+    from lib.circuitpython_typing.socket import (
         CircuitPythonSocketType,
         InterfaceType,
         SocketpoolModuleType,

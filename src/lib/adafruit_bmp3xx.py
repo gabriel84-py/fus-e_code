@@ -253,7 +253,7 @@ class BMP3XX_I2C(BMP3XX):
     """
 
     def __init__(self, i2c: I2C, address: int = 0x77) -> None:
-        from adafruit_bus_device import i2c_device  # noqa: PLC0415
+        from lib.adafruit_bus_device import i2c_device  # noqa: PLC0415
 
         self._i2c = i2c_device.I2CDevice(i2c, address)
         super().__init__()
@@ -309,7 +309,7 @@ class BMP3XX_SPI(BMP3XX):
     """
 
     def __init__(self, spi: SPI, cs: DigitalInOut) -> None:
-        from adafruit_bus_device import spi_device  # noqa: PLC0415
+        from lib.adafruit_bus_device import spi_device  # noqa: PLC0415
 
         self._spi = spi_device.SPIDevice(spi, cs)
         # toggle CS low/high to put BMP3XX in SPI mode

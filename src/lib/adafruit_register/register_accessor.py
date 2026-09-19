@@ -18,8 +18,8 @@ __repo__ = "https://github.com/adafruit/Adafruit_CircuitPython_Register.git"
 try:
     from typing import Union
 
-    from adafruit_bus_device.i2c_device import I2CDevice
-    from adafruit_bus_device.spi_device import SPIDevice
+    from lib.adafruit_bus_device.i2c_device import I2CDevice
+    from lib.adafruit_bus_device.spi_device import SPIDevice
 except ImportError:
     pass
 

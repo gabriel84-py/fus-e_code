@@ -15,7 +15,7 @@ try:
 
     # Used only for type annotations.
     from busio import I2C
-    from circuitpython_typing import ReadableBuffer, WriteableBuffer
+    from lib.circuitpython_typing import ReadableBuffer, WriteableBuffer
 except ImportError:
     pass
 

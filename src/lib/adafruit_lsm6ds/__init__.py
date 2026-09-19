@@ -59,10 +59,10 @@ import struct
 from math import radians
 from time import sleep
 
-from adafruit_bus_device import i2c_device
-from adafruit_register.i2c_bit import ROBit, RWBit
-from adafruit_register.i2c_bits import RWBits
-from adafruit_register.i2c_struct import ROUnaryStruct, Struct
+from lib.adafruit_bus_device import i2c_device
+from lib.adafruit_register.i2c_bit import ROBit, RWBit
+from lib.adafruit_register.i2c_bits import RWBits
+from lib.adafruit_register.i2c_struct import ROUnaryStruct, Struct
 from micropython import const
 
 try:

@@ -16,7 +16,7 @@ http: www.airspayce.com/mikem/arduino/RadioHead/
 import random
 import time
 
-import adafruit_bus_device.spi_device as spidev
+import lib.adafruit_bus_device.spi_device as spidev
 from micropython import const
 
 HAS_SUPERVISOR = False
@@ -33,7 +33,7 @@ try:
     from typing import Optional, Type
 
     from busio import SPI
-    from circuitpython_typing import ReadableBuffer, WriteableBuffer
+    from lib.circuitpython_typing import ReadableBuffer, WriteableBuffer
     from digitalio import DigitalInOut
 
     try:

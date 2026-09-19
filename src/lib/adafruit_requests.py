@@ -44,7 +44,7 @@ import json as json_module
 import os
 import sys
 
-from adafruit_connection_manager import get_connection_manager
+from lib.adafruit_connection_manager import get_connection_manager
 
 SEEK_END = 2
 
@@ -52,7 +52,7 @@ if not sys.implementation.name == "circuitpython":
     from types import TracebackType
     from typing import IO, Any, Dict, Optional, Type
 
-    from circuitpython_typing.socket import (
+    from lib.circuitpython_typing.socket import (
         SocketpoolModuleType,
         SocketType,
         SSLContextType,

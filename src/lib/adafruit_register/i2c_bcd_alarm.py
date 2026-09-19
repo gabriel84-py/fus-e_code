@@ -19,7 +19,7 @@ import time
 try:
     from typing import Optional, Tuple, Type
 
-    from circuitpython_typing.device_drivers import I2CDeviceDriver
+    from lib.circuitpython_typing.device_drivers import I2CDeviceDriver
     from typing_extensions import Literal
 
     FREQUENCY_T = Literal["monthly", "weekly", "daily", "hourly", "minutely", "secondly"]
