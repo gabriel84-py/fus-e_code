@@ -20,7 +20,7 @@ KALMAN_UPDATE_PERIOD = 0.22    # periode de correction barometrique
 ALPHA_BIAIS = 0.02             # tau = 1.4 s a 35 Hz
 
 DEBUG_FREQ = True     # etat de vol sur le REPL, 1x/s ; False au jour J
-BUZZER_ENABLED = True  # False au banc pour couper le son sans changer la logique
+BUZZER_ENABLED = False  # False au banc pour couper le son sans changer la logique
 
 
 def compute_altitude(pressure_hpa, sea_level_hpa):
