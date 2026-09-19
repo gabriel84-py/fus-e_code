@@ -1,5 +1,5 @@
 # buzzer sur GP3 : allume en continu de PRE_LAUNCH a LANDED
-import battery, datalog, kalman, sensors, state_machine, telemetry
+import battery as battery, datalog as datalog, kalman as kalman, sensors as sensors, state_machine as state_machine, telemetry as telemetry
 import board
 import busio
 import digitalio

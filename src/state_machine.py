@@ -1,5 +1,5 @@
 import time
-import apogee
+import apogee as apogee
 
 
 class StateMachine:
