@@ -22,6 +22,16 @@ ALPHA_BIAIS = 0.02             # tau = 1.4 s a 35 Hz
 DEBUG_FREQ = True     # etat de vol sur le REPL, 1x/s ; False au jour J
 BUZZER_ENABLED = False  # False au banc pour couper le son sans changer la logique
 
+buzzer = digitalio.DigitalInOut(board.GP3)
+buzzer.direction = digitalio.Direction.OUTPUT
+
+time.sleep(10)
+
+buzzer.value = True
+time.sleep(1)
+buzzer.value = False
+
+
 
 def compute_altitude(pressure_hpa, sea_level_hpa):
     # formule de adafruit_bmp3xx.altitude, appliquee a une pression deja lue
@@ -31,10 +41,6 @@ def compute_altitude(pressure_hpa, sea_level_hpa):
 
 sta = state_machine.StateMachine()
 sta.state = "SETUP"
-
-buzzer = digitalio.DigitalInOut(board.GP3)
-buzzer.direction = digitalio.Direction.OUTPUT
-buzzer.value = False
 
 
 def set_buzzer(state):
