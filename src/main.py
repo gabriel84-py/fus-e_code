@@ -25,7 +25,7 @@ BUZZER_ENABLED = False  # False au banc pour couper le son sans changer la logiq
 buzzer = digitalio.DigitalInOut(board.GP3)
 buzzer.direction = digitalio.Direction.OUTPUT
 
-time.sleep(10)
+time.sleep(20)
 
 buzzer.value = True
 time.sleep(1)
