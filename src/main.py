@@ -154,7 +154,7 @@ while True:
         kal_h, kal_v, kal_b = 0.0, 0.0, kal.b
 
     # ---- machine d'etat : jamais sautee ---------------------------------
-    sta.update(sec, imu_accel[2], kal_v, kal_h, baro_alt)
+    sta.update(sec, imu_accel[2], kal_v, kal_h, baro_alt if baro_ok else None)
 
     # ---- journalisation --------------------------------------------------
     try:
