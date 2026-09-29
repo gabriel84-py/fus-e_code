@@ -76,6 +76,33 @@ The one that surprised me: the maths costs almost nothing. The barometer eats mo
 - **Apogee fired on the launch pad.** Feeding the detector raw baro altitude, noise alone crossed the threshold before liftoff in 2 runs out of 5. Feeding it the Kalman altitude fixed it.
 - **Still open:** under the parachute the rocket swings, gravity leaks into the accelerometer axis, and the filter becomes overconfident (1.5 m of real error for 8.5 cm announced). Fixing that means adding attitude from the gyro, so going from 3 states to at least 6.
 
+## The flight
+ 
+LUNATIK flew in September 2026 and logged the whole thing to SD at about 30 Hz. This is the raw log, straight from the card:
+ 
+![Flight data](data_flight_2.png)
+ 
+| | |
+|---|---|
+| Apogee | 140 m, 6.1 s after liftoff |
+| Peak acceleration | 4.0 g, top speed 45 m/s |
+| Liftoff detected | 63 ms after the first sample above 2 g (needs 3 in a row) |
+| Burnout detected | 2.9 s after liftoff, on the sensor threshold, not the backup timer |
+| Apogee called by LUNATIK | **0.45 s after the top** (simulation said 0.37 s) |
+| Motor ejection charge | 2.5 s after LUNATIK called apogee, 24 m lower |
+| Descent under parachute | 9.3 m/s |
+| Landing detected | 5 s after touchdown, as designed |
+ 
+The result I care most about: the motor's delay charge opened the parachute 2.5 s after the top, with the rocket already 24 m down. LUNATIK knew it was at apogee half a second after the top. On this flight, electronic deployment would have opened the chute a lot earlier and higher.
+ 
+**What went wrong in the air.** Look at the blue curve after the parachute opens. Under the chute the rocket hangs upside down, so the accelerometer reads about -10 m/s^2 instead of +10. The filter still subtracts its +9.81 bias, sees 20 m/s^2 of acceleration that doesn't exist, and drifts. Once it was more than 30 m off, the innovation gate (there to protect the filter from one bad baro reading) started rejecting *every* baro reading, so it never came back. It ended the flight thousands of meters underground.
+ 
+Two lessons: a gate needs a way back (reset on the barometer after too many rejections), and the model needs attitude, or at least needs to stop trusting the accelerometer under the chute. The good news is that landing detection runs on the raw barometer, not on the filter, so the state machine still called LANDED correctly.
+ 
+<p align="center">
+  <img src="doc/img/rocket_landed.jpg" width="60%" alt="The rocket after landing">
+</p>
+
 ## Try it without a rocket
 
 The ground station has a simulation mode that generates fake telemetry, so you can see it running with no hardware:
