@@ -1,4 +1,4 @@
-from libs_et_tt.sensors import Sensors
+from sensors import Sensors
 
 sensors = Sensors()
 while True:
