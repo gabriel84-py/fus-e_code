@@ -22,10 +22,10 @@ import time
 import tkinter as tk
 
 import serial
-from serial.tools import list_ports
 
-VID_PICO = 0x2E8A        # identifiant USB des cartes Raspberry Pi (Pico 2)
-BAUDS = 115200           # ignore par la console USB du Pico, mais obligatoire
+import cartes                           # choix de la carte A ou B, port exclusif
+
+CARTE = "A"              # carte des demos (numeros de serie dans cartes.py)
 G = 9.81
 
 FENETRE_S = 5.0          # duree affichee a l'ecran (s)
@@ -45,6 +45,7 @@ NB_COLONNES = 17
 # ---- etat du programme -------------------------------------------------------
 port_serie = None
 tampon = ""
+t_dernier_essai = 0.0
 mesures = []             # liste de (t_carte, a_long, norme)
 
 etat = "direct"          # "direct", "chute" ou "fige"
@@ -62,29 +63,17 @@ def virgule(x, n):
     return f"{x:.{n}f}".replace(".", ",")
 
 
-def trouver_port():
-    """Port impose en argument, sinon le premier port d'une carte Pico."""
-    if len(sys.argv) > 1:
-        return sys.argv[1]
-    ports = [p for p in list_ports.comports() if p.vid == VID_PICO]
-    if not ports:
-        return None
-    ports.sort(key=lambda p: p.device)
-    return ports[0].device
-
-
 def connecter():
-    global port_serie, tampon
-    nom = trouver_port()
-    if nom is None:
+    """Cherche la carte (au plus deux fois par seconde) et ouvre son port."""
+    global port_serie, tampon, t_dernier_essai
+    if time.monotonic() - t_dernier_essai < 0.5:
         return
-    try:
-        port_serie = serial.Serial(nom, BAUDS, timeout=0)
-        port_serie.reset_input_buffer()
+    t_dernier_essai = time.monotonic()
+    nom = cartes.trouver_port(CARTE)
+    if nom is not None:
+        port_serie = cartes.ouvrir(nom)
         tampon = ""
-        message_etat.config(text="Carte connectée sur " + nom)
-    except serial.SerialException:
-        port_serie = None
+    message_etat.config(text=cartes.message)
 
 
 def instant_croisement(t0, n0, t1, n1):
@@ -178,7 +167,8 @@ def lire_port():
                     traiter_ligne(ligne)
         except (serial.SerialException, OSError):
             port_serie = None
-            message_etat.config(text="Carte débranchée, en attente...")
+            cartes.message = "Carte débranchée, en attente..."
+            message_etat.config(text=cartes.message)
     fenetre.after(10, lire_port)
 
 
@@ -211,7 +201,7 @@ def dessiner():
     largeur = zone.winfo_width()
     hauteur = zone.winfo_height()
     gauche, droite = int(largeur * 0.09), largeur - 40
-    haut, bas = 30, hauteur - int(hauteur * 0.12)
+    haut, bas = 45, hauteur - int(hauteur * 0.12)
 
     if mesures:
         fin = mesures[-1][0]
@@ -235,19 +225,19 @@ def dessiner():
     # graduations verticales
     for a in range(int(Y_MIN), int(Y_MAX) + 1, 5):
         zone.create_line(gauche, y(a), droite, y(a), fill="#dddddd")
-        zone.create_text(gauche - 12, y(a), text=str(a), anchor="e", font=petit)
-    zone.create_text(gauche - 12, haut - 22, text="m/s²", anchor="e", font=petit)
+        zone.create_text(gauche - 12, y(a), text=str(a), anchor="e", font=petit, fill="black")
+    zone.create_text(gauche - 40, haut - 14, text="accélération mesurée (m/s²)", anchor="sw", font=petit, fill="black")
 
     # reperes : 0 et g
     zone.create_line(gauche, y(0), droite, y(0), fill="black", width=2)
     zone.create_line(gauche, y(G), droite, y(G), fill="black", width=2, dash=(10, 8))
-    zone.create_text(droite, y(G) - 6, text="g = 9,81", anchor="se", font=petit)
+    zone.create_text(droite, y(G) - 6, text="g = 9,81", anchor="se", font=petit, fill="black")
 
     # graduations horizontales : une par seconde, comptees depuis la fin
     for k in range(int(FENETRE_S) + 1):
         xx = x(fin - k)
         zone.create_line(xx, bas, xx, bas + 10, fill="black", width=2)
-        zone.create_text(xx, bas + 14, text=f"-{k} s" if k else "0 s", anchor="n", font=petit)
+        zone.create_text(xx, bas + 14, text=f"-{k} s" if k else "0 s", anchor="n", font=petit, fill="black")
     zone.create_line(gauche, bas, droite, bas, fill="black", width=2)
 
     # courbes
@@ -266,9 +256,9 @@ def dessiner():
 
     # legende
     zone.create_line(droite - 330, haut + 18, droite - 280, haut + 18, fill="black", width=4)
-    zone.create_text(droite - 270, haut + 18, text="a_long", anchor="w", font=petit)
+    zone.create_text(droite - 270, haut + 18, text="a_long", anchor="w", font=petit, fill="black")
     zone.create_line(droite - 330, haut + 55, droite - 280, haut + 55, fill="#888888", width=4)
-    zone.create_text(droite - 270, haut + 55, text="|a| (3 axes)", anchor="w", font=petit)
+    zone.create_text(droite - 270, haut + 55, text="|a| (3 axes)", anchor="w", font=petit, fill="black")
 
     # valeurs en gros
     if visibles:
@@ -298,7 +288,7 @@ def dessiner():
         bilan.config(text="Lâchez la carte au-dessus d'un coussin     (Espace : pause)")
 
     if port_serie is None:
-        message_etat.config(text="Carte non trouvée : branche le câble USB")
+        message_etat.config(text=cartes.message)
     fenetre.after(40, dessiner)
 
 

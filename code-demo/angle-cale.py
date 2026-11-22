@@ -12,7 +12,18 @@
 # Lancement    : python angle_cale.py          (port trouve tout seul)
 #                python angle_cale.py COM5     (Windows, port impose)
 #                python angle_cale.py /dev/cu.usbmodem1101
-# Touches      : F11 = plein ecran oui/non, Echap = quitter
+# Touches      : Z = memoriser la position de reference (carte DEBOUT sur la
+#                    table, avant de la poser sur la cale)
+#                X = oublier la reference
+#                F11 = plein ecran oui/non, Echap = quitter
+#
+# Pourquoi la reference (touche Z) : la formule (1) suppose que "debout" veut
+# dire "parfaitement vertical". Si la table penche un peu, ou si l'axe du
+# capteur n'est pas parfaitement aligne avec la carte (decalage du zero de
+# l'accelerometre), l'angle lu peut etre faux de 1 a 2 degres. En memorisant
+# le vecteur g mesure carte debout, puis en calculant l'angle entre ce vecteur
+# et celui mesure sur la cale, ces deux erreurs s'annulent :
+#     cos(angle) = (g_ref . g_cale) / (|g_ref| x |g_cale|)
 
 import math
 import sys
@@ -20,10 +31,10 @@ import time
 import tkinter as tk
 
 import serial
-from serial.tools import list_ports
 
-VID_PICO = 0x2E8A        # identifiant USB des cartes Raspberry Pi (Pico 2)
-BAUDS = 115200           # ignore par la console USB du Pico, mais obligatoire
+import cartes                           # choix de la carte A ou B, port exclusif
+
+CARTE = "A"              # carte des demos (numeros de serie dans cartes.py)
 FENETRE_S = 1.0          # duree de la moyenne, en secondes de mesures carte
 G = 9.81                 # m/s2, pour la verification de la norme
 ANGLE_CALE = 30.0        # valeur proposee au demarrage dans le champ
@@ -41,7 +52,9 @@ PLUS_MOINS = "\u00b1"
 # ---- etat du programme -----------------------------------------------------
 port_serie = None
 tampon = ""
+t_dernier_essai = 0.0
 mesures = []             # liste de (t_carte, a_lat1, a_lat2, a_long)
+reference = None         # (a_lat1, a_lat2, a_long) moyen, carte debout (touche Z)
 nb_trames = 0
 t_debut_comptage = time.monotonic()
 cadence = 0.0
@@ -60,30 +73,17 @@ def carre(x):
     return texte + "²"
 
 
-def trouver_port():
-    """Port impose en argument, sinon le premier port d'une carte Pico."""
-    if len(sys.argv) > 1:
-        return sys.argv[1]
-    ports = [p for p in list_ports.comports() if p.vid == VID_PICO]
-    if not ports:
-        return None
-    # si boot.py active un 2e port (donnees), la console a le plus petit nom
-    ports.sort(key=lambda p: p.device)
-    return ports[0].device
-
-
 def connecter():
-    global port_serie, tampon
-    nom = trouver_port()
-    if nom is None:
+    """Cherche la carte (au plus deux fois par seconde) et ouvre son port."""
+    global port_serie, tampon, t_dernier_essai
+    if time.monotonic() - t_dernier_essai < 0.5:
         return
-    try:
-        port_serie = serial.Serial(nom, BAUDS, timeout=0)
-        port_serie.reset_input_buffer()
+    t_dernier_essai = time.monotonic()
+    nom = cartes.trouver_port(CARTE)
+    if nom is not None:
+        port_serie = cartes.ouvrir(nom)
         tampon = ""
-        etat.config(text="Carte connectée sur " + nom)
-    except serial.SerialException:
-        port_serie = None
+    etat.config(text=cartes.message)
 
 
 def traiter_ligne(ligne):
@@ -123,7 +123,8 @@ def lire_port():
         except (serial.SerialException, OSError):
             port_serie = None               # cable debranche : on reessaie
             mesures.clear()
-            etat.config(text="Carte débranchée, en attente...")
+            cartes.message = "Carte débranchée, en attente..."
+            etat.config(text=cartes.message)
     fenetre.after(20, lire_port)
 
 
@@ -132,6 +133,38 @@ def lire_angle_cale():
         return float(champ_cale.get().replace(",", "."))
     except ValueError:
         return None
+
+
+def moyenne_axes():
+    n = len(mesures)
+    return (sum(m[1] for m in mesures) / n,
+            sum(m[2] for m in mesures) / n,
+            sum(m[3] for m in mesures) / n)
+
+
+def memoriser_reference(_evenement=None):
+    """Touche Z : la position actuelle (carte debout) sert de reference."""
+    global reference
+    if _evenement is not None and _evenement.widget is champ_cale:
+        return                      # on tape dans le champ de l'angle, pas une commande
+    if len(mesures) >= 5:
+        reference = moyenne_axes()
+
+
+def oublier_reference(_evenement=None):
+    global reference
+    if _evenement is not None and _evenement.widget is champ_cale:
+        return
+    reference = None
+
+
+def angle_entre(u, v):
+    """Angle (degres) entre deux vecteurs, par le produit scalaire."""
+    scalaire = u[0] * v[0] + u[1] * v[1] + u[2] * v[2]
+    nu = math.sqrt(u[0] ** 2 + u[1] ** 2 + u[2] ** 2)
+    nv = math.sqrt(v[0] ** 2 + v[1] ** 2 + v[2] ** 2)
+    c = max(-1.0, min(1.0, scalaire / (nu * nv)))
+    return math.degrees(math.acos(c))
 
 
 def afficher():
@@ -145,7 +178,7 @@ def afficher():
 
     if len(mesures) < 5:
         if port_serie is None:
-            etat.config(text="Carte non trouvée : branche le câble USB")
+            etat.config(text=cartes.message)
         fenetre.after(200, afficher)
         return
 
@@ -183,6 +216,15 @@ def afficher():
     else:
         ecart.config(text=f"écart mesure - cale : {virgule(angle - angle_cale, 1)}°")
 
+    if reference is None:
+        texte_reference.config(text="Z : mémoriser la carte debout comme référence")
+    else:
+        angle_ref = angle_entre(reference, (a1, a2, a3))
+        texte = f"par rapport à la référence debout : {virgule(angle_ref, 1)}°"
+        if angle_cale is not None:
+            texte += f"   (écart avec la cale : {virgule(angle_ref - angle_cale, 1)}°)"
+        texte_reference.config(text=texte + "     X : oublier")
+
     verif.config(text=f"vérification : |a| = {virgule(norme, 2)} m/s²  "
                       f"(g = {virgule(G, 2)}, écart {virgule(100 * (norme - G) / G, 1)} %)")
     fenetre.after(200, afficher)
@@ -200,6 +242,10 @@ fenetre.configure(bg="white")
 fenetre.attributes("-fullscreen", True)
 fenetre.bind("<F11>", basculer_plein_ecran)
 fenetre.bind("<Escape>", lambda e: fenetre.destroy())
+fenetre.bind("<z>", memoriser_reference)
+fenetre.bind("<Z>", memoriser_reference)
+fenetre.bind("<x>", oublier_reference)
+fenetre.bind("<X>", oublier_reference)
 
 # tailles de police proportionnelles a l'ecran (videoprojecteur)
 h = fenetre.winfo_screenheight()
@@ -233,6 +279,7 @@ champ_cale.pack(side="left", padx=10)
 tk.Label(zone_cale, text="°", font=moyen, bg="white", fg="black").pack(side="left")
 
 ecart = ligne_texte(moyen)
+texte_reference = ligne_texte(petit)
 verif = ligne_texte(petit)
 etat = ligne_texte(petit, 20)
 etat.config(text="Recherche de la carte...")

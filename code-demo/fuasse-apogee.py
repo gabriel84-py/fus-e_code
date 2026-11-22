@@ -21,13 +21,14 @@
 #                F11 = plein ecran oui/non, Echap = quitter
 
 import sys
+import time
 import tkinter as tk
 
 import serial
-from serial.tools import list_ports
 
-VID_PICO = 0x2E8A        # identifiant USB des cartes Raspberry Pi (Pico 2)
-BAUDS = 115200           # ignore par la console USB du Pico, mais obligatoire
+import cartes                           # choix de la carte A ou B, port exclusif
+
+CARTE = "B"              # carte du fil rouge (numeros de serie dans cartes.py)
 
 LISTE_N = [3, 5, 10]     # nombres de decroissances testes
 TROU_MAX_S = 1.0         # au-dela, deux mesures ne se suivent pas vraiment
@@ -39,6 +40,7 @@ NB_COLONNES = 17
 # ---- etat du programme -------------------------------------------------------
 port_serie = None
 tampon = ""
+t_dernier_essai = 0.0
 pause = False
 caches = True            # choisi sur l'ecran de depart
 demarre = False          # True une fois le choix fait
@@ -50,29 +52,17 @@ nb_mesures = 0
 duree_s = 0.0            # temps de mesure cumule (sans les pauses ni les trous)
 
 
-def trouver_port():
-    """Port impose en argument, sinon le premier port d'une carte Pico."""
-    if len(sys.argv) > 1:
-        return sys.argv[1]
-    ports = [p for p in list_ports.comports() if p.vid == VID_PICO]
-    if not ports:
-        return None
-    ports.sort(key=lambda p: p.device)
-    return ports[0].device
-
-
 def connecter():
-    global port_serie, tampon
-    nom = trouver_port()
-    if nom is None:
+    """Cherche la carte (au plus deux fois par seconde) et ouvre son port."""
+    global port_serie, tampon, t_dernier_essai
+    if time.monotonic() - t_dernier_essai < 0.5:
         return
-    try:
-        port_serie = serial.Serial(nom, BAUDS, timeout=0)
-        port_serie.reset_input_buffer()
+    t_dernier_essai = time.monotonic()
+    nom = cartes.trouver_port(CARTE)
+    if nom is not None:
+        port_serie = cartes.ouvrir(nom)
         tampon = ""
-        message_etat.config(text="Carte connectée sur " + nom)
-    except serial.SerialException:
-        port_serie = None
+    message_etat.config(text=cartes.message)
 
 
 def repartir_a_zero_les_series():
@@ -135,7 +125,8 @@ def lire_port():
         except (serial.SerialException, OSError):
             port_serie = None
             repartir_a_zero_les_series()
-            message_etat.config(text="Carte débranchée, en attente...")
+            cartes.message = "Carte débranchée, en attente..."
+            message_etat.config(text=cartes.message)
     fenetre.after(10, lire_port)
 
 
@@ -160,7 +151,7 @@ def afficher():
         bilan.config(text=f"{nb_mesures} mesures du baromètre     "
                           f"(V : révéler / cacher, Espace : pause)")
         if port_serie is None:
-            message_etat.config(text="Carte non trouvée : branche le câble USB")
+            message_etat.config(text=cartes.message)
     fenetre.after(200, afficher)
 
 
